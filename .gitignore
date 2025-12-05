@@ -25,3 +25,6 @@ Thumbs.db
 # Deploy
 deploy/
 deploy/*
+
+# Секреты и локальные настройки
+.env

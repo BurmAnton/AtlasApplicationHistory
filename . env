@@ -1,0 +1,4 @@
+DJANGO_SECRET_KEY=django-insecure-y)#0*-iiyiv9msyvb9kjsv@o@!#(5gbbym3rr-zcridndn3pyn
+DJANGO_DEBUG=False
+DJANGO_ALLOWED_HOSTS=history.tuna-edu.ru
+DJANGO_CSRF_TRUSTED_ORIGINS=https://history.tuna-edu.ru
