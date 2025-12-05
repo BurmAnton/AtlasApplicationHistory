@@ -118,7 +118,7 @@ def application_list(request):
             queryset = queryset.filter(prev_rr_status=prev_status_rr_filter)
 
     if request.GET.get('export'):
-        return export_to_excel(queryset, selected_date)
+        return export_to_excel(queryset, selected_dt)
 
     # Statistics (based on filtered queryset)
     stats_atlas = queryset.values('current_atlas_status').annotate(total=Count('id')).order_by('-total')
