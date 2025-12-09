@@ -1,13 +1,16 @@
 import pandas as pd
+from pathlib import Path
 from .models import Application, StatusHistory, ImportHistory
 from django.db import transaction
 from datetime import datetime
 from django.http import HttpResponse
 
-def import_data(file, snapshot_dt):
-    # Read Excel file
-    df = pd.read_excel(file)
-    
+
+def _import_dataframe(df, snapshot_dt, filename: str):
+    """
+    Общая реализация импорта.
+    Принимает уже загруженный DataFrame и человеко‑читаемое имя файла для ImportHistory.
+    """
     # Strip whitespace from column names
     df.columns = df.columns.str.strip()
 
@@ -156,13 +159,35 @@ def import_data(file, snapshot_dt):
             
         # 4. Create ImportHistory record
         ImportHistory.objects.create(
-            filename=file.name,
+            filename=filename,
             snapshot_dt=snapshot_dt,
             created_count=len(new_apps),
             updated_count=len(update_apps)
         )
 
     return len(new_apps), len(update_apps)
+
+
+def import_from_file(path, snapshot_dt, title: str | None = None):
+    """
+    Импорт данных из локального файла (используется скрапером и CLI).
+    path — путь к .xlsx файлу,
+    snapshot_dt — дата/время среза, полученная из интерфейса Атласа.
+    """
+    file_path = Path(path)
+    df = pd.read_excel(file_path)
+    filename = title or file_path.name
+    return _import_dataframe(df, snapshot_dt, filename)
+
+
+def import_data(file, snapshot_dt):
+    """
+    Обертка для текущей формы импорта (загруженный файл Django).
+    Сохраняет прежний интерфейс для views, внутри использует общую логику.
+    """
+    df = pd.read_excel(file)
+    filename = getattr(file, "name", None) or str(file)
+    return _import_dataframe(df, snapshot_dt, filename)
 
 def export_to_excel(queryset, selected_date=None):
     data = []
