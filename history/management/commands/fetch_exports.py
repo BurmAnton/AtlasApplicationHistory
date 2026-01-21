@@ -38,9 +38,11 @@ class Command(BaseCommand):
         total_updated = 0
 
         def should_download(title: str, snapshot_dt):
-            # Пропускаем срезы, которые уже есть в истории импорта
+            # Пропускаем срезы, которые уже есть в истории импорта.
+            # Проверяем только по дате среза, т.к. в истории теперь храним
+            # реальное имя файла, а не текст из интерфейса Атласа.
             exists = ImportHistory.objects.filter(
-                snapshot_dt=snapshot_dt, filename=title
+                snapshot_dt=snapshot_dt
             ).exists()
             if exists:
                 self.stdout.write(

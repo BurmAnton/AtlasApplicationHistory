@@ -38,6 +38,11 @@ browser:
   driver: "chrome"
   # Папка для скачивания файлов (по умолчанию ./downloads)
   download_dir: "downloads"
+  # Запуск в headless-режиме (для сервера лучше оставить true)
+  headless: true
+  # Явный путь до бинаря браузера (теперь используем официальный Google Chrome)
+  # Проверено командой: which google-chrome
+  binary_path: "/usr/bin/google-chrome"
   # Таймауты ожиданий (секунды)
   implicit_wait: 5
   explicit_wait: 20

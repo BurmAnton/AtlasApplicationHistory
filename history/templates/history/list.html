@@ -302,7 +302,8 @@
             <tr data-bs-toggle="tooltip" data-bs-html="true" title="
                 <div class='fw-bold mb-2'>История изменений:</div>
                 <div class='tooltip-history-scroll'>
-                {% for h in app.history.all %}
+                {% load history_extras %}
+                {% for h in app.history.all|compact_history %}
                     <div class='status-history-item'>
                         <small>{{ h.snapshot_dt|date:'d.m.Y H:i' }}</small><br>
                         А: {{ h.atlas_status }} | РР: {{ h.rr_status }}

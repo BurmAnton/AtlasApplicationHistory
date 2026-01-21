@@ -64,15 +64,35 @@ def _import_dataframe(df, snapshot_dt, filename: str):
                 return None
             return val
 
-        # Helper to parse dates
+        # Helper to parse dates (формат dd.mm.yyyy, dd.mm.yyyy HH:MM[:SS])
         def parse_date(val):
             if pd.isna(val):
                 return None
+
+            # Уже datetime/timestamp → просто берём date()
             if isinstance(val, datetime):
                 return val.date()
+            if hasattr(val, "to_pydatetime"):
+                try:
+                    return val.to_pydatetime().date()
+                except Exception:  # noqa: BLE001
+                    pass
+
+            # Явная строка в русском формате
+            if isinstance(val, str):
+                s = val.strip()
+                if not s:
+                    return None
+                for fmt in ("%d.%m.%Y", "%d.%m.%Y %H:%M:%S", "%d.%m.%Y %H:%M"):
+                    try:
+                        return datetime.strptime(s, fmt).date()
+                    except ValueError:
+                        continue
+
+            # Fallback: dayfirst=True, чтобы pandas не путал день/месяц
             try:
-                return pd.to_datetime(val).date()
-            except:
+                return pd.to_datetime(val, dayfirst=True).date()
+            except Exception:  # noqa: BLE001
                 return None
 
         data = {
@@ -96,20 +116,48 @@ def _import_dataframe(df, snapshot_dt, filename: str):
         if rr_id in existing_apps:
             app = existing_apps[rr_id]
             status_changed = False
-            
-            # Check if status changed
-            if (app.current_atlas_status != data['current_atlas_status']) or \
-               (app.current_rr_status != data['current_rr_status']):
-                
-                # Update previous statuses before updating current
-                app.prev_atlas_status = app.current_atlas_status
-                app.prev_rr_status = app.current_rr_status
-                
-                # Update current statuses
-                app.current_atlas_status = data['current_atlas_status']
-                app.current_rr_status = data['current_rr_status']
-                
-                status_changed = True
+
+            old_atlas = app.current_atlas_status
+            old_rr = app.current_rr_status
+            new_atlas = data['current_atlas_status']
+            new_rr = data['current_rr_status']
+
+            atlas_changed = old_atlas != new_atlas
+            rr_changed = old_rr != new_rr
+            status_changed = atlas_changed or rr_changed
+
+            if status_changed:
+                # Предыдущие статусы считаем ИЗ ИСТОРИИ независимо для Атлас и РР:
+                # ищем последний срез, где статус отличался от текущего.
+                if atlas_changed:
+                    prev_atlas = (
+                        StatusHistory.objects.filter(
+                            application=app,
+                            atlas_status__isnull=False,
+                        )
+                        .exclude(atlas_status=new_atlas)
+                        .order_by('-snapshot_dt')
+                        .values_list('atlas_status', flat=True)
+                        .first()
+                    )
+                    app.prev_atlas_status = prev_atlas
+
+                if rr_changed:
+                    prev_rr = (
+                        StatusHistory.objects.filter(
+                            application=app,
+                            rr_status__isnull=False,
+                        )
+                        .exclude(rr_status=new_rr)
+                        .order_by('-snapshot_dt')
+                        .values_list('rr_status', flat=True)
+                        .first()
+                    )
+                    app.prev_rr_status = prev_rr
+
+                # Обновляем текущие статусы
+                app.current_atlas_status = new_atlas
+                app.current_rr_status = new_rr
 
             # Update other fields just in case they changed (optional, but good for consistency)
             for key, value in data.items():
@@ -175,8 +223,23 @@ def import_from_file(path, snapshot_dt, title: str | None = None):
     snapshot_dt — дата/время среза, полученная из интерфейса Атласа.
     """
     file_path = Path(path)
+    # В базе храним реальное имя файла, а не заголовок из Атласа,
+    # чтобы колонка "Файл" отражала исходный .xlsx.
+    filename = file_path.name
+
+    # Защита от повторного импорта по дате среза:
+    # Если такой срез уже есть в истории, сам файл больше не нужен — удаляем его.
+    if ImportHistory.objects.filter(snapshot_dt=snapshot_dt).exists():
+        try:
+            file_path.unlink(missing_ok=True)
+        except Exception:
+            # Ошибку удаления игнорируем, главное — не делать повторный импорт.
+            pass
+        raise ValueError(
+            f"Импорт с датой среза {snapshot_dt} уже был выполнен."
+        )
+
     df = pd.read_excel(file_path)
-    filename = title or file_path.name
     return _import_dataframe(df, snapshot_dt, filename)
 
 
@@ -185,8 +248,15 @@ def import_data(file, snapshot_dt):
     Обертка для текущей формы импорта (загруженный файл Django).
     Сохраняет прежний интерфейс для views, внутри использует общую логику.
     """
-    df = pd.read_excel(file)
     filename = getattr(file, "name", None) or str(file)
+
+    # Аналогичная защита: не допускаем второй импорт того же среза
+    if ImportHistory.objects.filter(snapshot_dt=snapshot_dt).exists():
+        raise ValueError(
+            f"Импорт с датой среза {snapshot_dt} уже был выполнен."
+        )
+
+    df = pd.read_excel(file)
     return _import_dataframe(df, snapshot_dt, filename)
 
 def export_to_excel(queryset, selected_date=None):
@@ -233,6 +303,19 @@ def export_to_excel(queryset, selected_date=None):
         data.append(row)
     
     df = pd.DataFrame(data)
+
+    # Принудительно форматируем все даты в человеко‑читаемый вид dd.mm.yyyy,
+    # чтобы в Excel не было ISO‑формата/серийных чисел.
+    date_cols = [
+        'Начало периода обучения',
+        'Окончание периода обучения',
+        'Дата подачи заявки на РР',
+    ]
+    for col in date_cols:
+        if col in df.columns:
+            df[col] = df[col].apply(
+                lambda d: d.strftime('%d.%m.%Y') if pd.notnull(d) else ''
+            )
     
     response = HttpResponse(content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = f'attachment; filename=atlas_export_{datetime.now().strftime("%Y%m%d_%H%M")}.xlsx'
