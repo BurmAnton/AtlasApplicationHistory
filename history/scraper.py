@@ -45,11 +45,23 @@ def _build_driver(config: Dict[str, Any]):
     download_dir = Path(browser_cfg.get("download_dir") or "downloads").resolve()
     download_dir.mkdir(parents=True, exist_ok=True)
 
+    # Общие настройки headless-режима
+    headless = bool(browser_cfg.get("headless", True))
+
+    print(
+        f"[scraper] Инициализация драйвера: driver={driver_name}, "
+        f"headless={headless}, download_dir={download_dir}"
+    )
+
     if driver_name == "edge":
         options = webdriver.EdgeOptions()
-        #options.add_argument("--headless=new")
+        if headless:
+            # Headless-режим (для некоторых сборок стабильнее без суффикса =new)
+            options.add_argument("--headless")
         options.add_argument("--disable-gpu")
         options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--remote-debugging-port=0")
         prefs = {
             "download.default_directory": str(download_dir),
             "download.prompt_for_download": False,
@@ -60,11 +72,23 @@ def _build_driver(config: Dict[str, Any]):
         service = EdgeService(EdgeChromiumDriverManager().install())
         driver = webdriver.Edge(service=service, options=options)
     else:
-        # Chrome по умолчанию
+        # Chrome/Chromium по умолчанию
         options = webdriver.ChromeOptions()
-        #options.add_argument("--headless=new")
+        if headless:
+            # Headless-режим; DevToolsActivePort часто лечится обычным --headless
+            options.add_argument("--headless")
         options.add_argument("--disable-gpu")
         options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--remote-debugging-port=0")
+        # Раздельный профиль, чтобы избежать конфликтов snap/chromium
+        options.add_argument("--user-data-dir=/tmp/chrome-atlas-history")
+
+        # Возможность задать путь до бинаря через config['browser']['binary_path']
+        binary_path = browser_cfg.get("binary_path")
+        if binary_path:
+            options.binary_location = binary_path
+            print(f"[scraper] Используется бинарь браузера: {binary_path}")
         prefs = {
             "download.default_directory": str(download_dir),
             "download.prompt_for_download": False,
@@ -72,8 +96,11 @@ def _build_driver(config: Dict[str, Any]):
             "safebrowsing.enabled": True,
         }
         options.add_experimental_option("prefs", prefs)
-        service = ChromeService(ChromeDriverManager().install())
-        driver = webdriver.Chrome(service=service, options=options)
+
+        # Для Chrome используем Selenium Manager (без webdriver-manager),
+        # чтобы автоматически подобрать совместимый chromedriver.
+        # Достаточно установленного /usr/bin/google-chrome.
+        driver = webdriver.Chrome(options=options)
 
     # Гарантируем минимальную ширину окна (для десктоп‑версии интерфейса)
     min_width = 1500
@@ -301,10 +328,21 @@ def collect_and_download_exports(
     existing_files = set(download_dir.glob("*.xlsx"))
 
     for item in items:
-        # Текст, содержащий дату/время
-        text_el = item.find_element(By.CSS_SELECTOR, text_selector)
-        
-        text = text_el.text.strip()
+        # Текст, содержащий дату/время. Элемент может «протухать» (stale),
+        # поэтому пытаемся перечитать его несколько раз.
+        retries = 3
+        text = ""
+        while retries > 0:
+            try:
+                text_el = item.find_element(By.CSS_SELECTOR, text_selector)
+                text = text_el.text.strip()
+                break
+            except StaleElementReferenceException:
+                retries -= 1
+                time.sleep(0.5)
+        if not text:
+            print("[scraper] Пропуск элемента выгрузки: не удалось прочитать текст (stale).")
+            continue
 
         try:
             snapshot_dt = _parse_snapshot_dt(text)
@@ -392,7 +430,11 @@ def create_and_download_latest_export(
     while time.time() < deadline:
         current_items = driver.find_elements(By.CSS_SELECTOR, item_selector)
         for it in current_items:
-            txt = it.text.strip()
+            try:
+                txt = it.text.strip()
+            except StaleElementReferenceException:
+                # Элемент успел протухнуть — пропускаем его и двигаемся дальше.
+                continue
             if txt and txt not in existing_texts:
                 new_item = it
                 new_text = txt
@@ -433,9 +475,30 @@ def create_and_download_latest_export(
             "Не удалось дождаться кнопки скачивания для новой выгрузки."
         )
 
-    # Обрабатываем только эту новую выгрузку
-    text_el = new_item.find_element(By.CSS_SELECTOR, text_selector)
-    text = text_el.text.strip()
+    # Обрабатываем только эту новую выгрузку.
+    # Элемент и его текст тоже могут стать "stale", поэтому добавляем защиту.
+    retries = 3
+    text = ""
+    while retries > 0:
+        try:
+            text_el = new_item.find_element(By.CSS_SELECTOR, text_selector)
+            text = text_el.text.strip()
+            break
+        except StaleElementReferenceException:
+            retries -= 1
+            # Переищем new_item по тексту, если он пересоздался
+            current_items = driver.find_elements(By.CSS_SELECTOR, item_selector)
+            for it in current_items:
+                if it.text.strip() == (new_text or ""):
+                    new_item = it
+                    break
+            time.sleep(0.5)
+
+    if not text:
+        raise RuntimeError(
+            "Не удалось прочитать текст новой выгрузки (stale element). "
+            "Попробуйте повторить запуск или уточнить селекторы в конфиге."
+        )
 
     snapshot_dt = _parse_snapshot_dt(text)
     title = text
@@ -469,13 +532,18 @@ def run_scraper(
     3) скачивает все выгрузки (в порядке от старых к новым) и для каждой
        по желанию вызывает on_export.
     """
+    print(f"[scraper] Загрузка конфига из {config_path!r}")
     config = load_config(config_path)
     driver, download_dir = _build_driver(config)
 
     try:
+        print("[scraper] Шаг 1/3: логин...")
         login(driver, config)
+        print("[scraper] Шаг 2/3: открытие страницы экспорта и модального окна...")
         open_export_modal(driver, config)
+        print("[scraper] Шаг 3/3: прокрутка истории выгрузок...")
         load_full_history(driver, config)
+        print("[scraper] Сбор списка выгрузок и скачивание файлов...")
         exports = collect_and_download_exports(
             driver,
             config,
@@ -503,11 +571,14 @@ def run_scraper_latest(
     4) ждёт появления новой строки и кнопки скачивания;
     5) скачивает и обрабатывает только эту выгрузку.
     """
+    print(f"[scraper] (latest) Загрузка конфига из {config_path!r}")
     config = load_config(config_path)
     driver, download_dir = _build_driver(config)
 
     try:
+        print("[scraper] (latest) Шаг 1/2: логин...")
         login(driver, config)
+        print("[scraper] (latest) Шаг 2/2: открытие страницы экспорта и модального окна...")
         open_export_modal(driver, config)
         export_item = create_and_download_latest_export(
             driver,

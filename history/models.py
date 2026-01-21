@@ -122,6 +122,11 @@ class ExportSchedule(models.Model):
             return False
         now = timezone.now()
         if self.last_run_at is None:
+            # Ещё ни разу не запускали — можно стартовать сразу
+            return True
+        if self.last_run_at > now:
+            # last_run_at в будущем (перескок системного времени и т.п.) —
+            # считаем, что расписание нужно разблокировать и дать хотя бы один запуск.
             return True
         delta = now - self.last_run_at
         return delta.total_seconds() >= self.interval_minutes * 60
@@ -129,3 +134,34 @@ class ExportSchedule(models.Model):
     def mark_executed(self):
         self.last_run_at = timezone.now()
         self.save(update_fields=["last_run_at"])
+
+    def save(self, *args, **kwargs):
+        """
+        При создании или повторном включении расписания
+        запускаем для него цепочку Celery‑задач run_export_schedule.
+
+        Таким образом каждое ExportSchedule «само» периодически проверяется
+        и, когда пора, инициирует скрапинг через fetch_latest_export.
+        """
+        is_new = self.pk is None
+        previous_enabled = None
+
+        if not is_new:
+            try:
+                previous = type(self).objects.get(pk=self.pk)
+                previous_enabled = previous.enabled
+            except type(self).DoesNotExist:
+                previous_enabled = None
+
+        super().save(*args, **kwargs)
+
+        # Импорт здесь внизу, чтобы избежать циклических импортов
+        from history.tasks import run_export_schedule
+
+        # Запускаем Celery‑цепочку:
+        #   - при первом создании включённого расписания
+        #   - при переключении enabled: False -> True
+        if (is_new and self.enabled) or (
+            previous_enabled is False and self.enabled is True
+        ):
+            run_export_schedule.delay(self.pk)
