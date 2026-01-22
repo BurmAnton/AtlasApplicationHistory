@@ -2,6 +2,7 @@ from django.shortcuts import render, redirect
 from django.contrib import messages
 from django.core.paginator import Paginator
 from django.db.models import Q, Subquery, OuterRef, Count
+from django.conf import settings
 from .forms import ImportForm
 from .services import import_data, export_to_excel
 from .models import Application, StatusHistory, ImportHistory
@@ -11,6 +12,11 @@ from itertools import zip_longest
 
 
 def application_list(request):
+
+    if not request.user.is_authenticated:
+        messages.warning(request, "Для доступа к странице требуется авторизоваться.")
+        return redirect(f'{settings.LOGIN_URL}?next={request.path}')
+    
     # Handle file upload
     import_form = ImportForm()
     if request.method == 'POST':
@@ -172,3 +178,8 @@ def application_list(request):
         'last_import': last_import,
     }
     return render(request, 'history/list.html', context)
+
+def logout_view(request):
+    from django.contrib.auth import logout
+    logout(request)
+    return redirect('/')

@@ -3,6 +3,12 @@ from django import template
 
 register = template.Library()
 
+@register.filter
+def has_groups(user, group_names):
+    """Проверяет наличие пользователя в любой из указанных групп"""
+    groups = group_names.split(',')
+    return user.groups.filter(name__in=groups).exists()
+
 
 @register.filter
 def compact_history(history_qs):

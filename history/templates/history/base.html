@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ru">
+{% load history_extras %}
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -29,8 +30,19 @@
                     <li class="nav-item">
                         <a class="nav-link active" href="{% url 'application_list' %}">Список заявок</a>
                     </li>
+                    {% if user|has_groups:"Импорт,Админ" %}
+                        <li class="nav-item">
+                            <a class="nav-link active" href="/admin">Админ панель</a>
+                        </li>
+                    {% endif %}
                 </ul>
             </div>
+            <span class="navbar-text me-3">
+                Привет, {{ user.get_full_name|default:user.username }}!
+            </span>
+            <a class="link-offset-2 link-light link-underline-opacity-0 link-underline-opacity-75-hover" href="/logout">
+                Выйти
+            </a>
         </div>
     </nav>
 
