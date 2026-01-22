@@ -1,4 +1,5 @@
 {% extends 'history/base.html' %}
+{% load history_extras %}
 
 {% block content %}
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
@@ -38,52 +39,54 @@
 </style>
 
 <!-- Import Section (Collapsible) -->
-<div class="card mb-3">
-    <div class="card-header d-flex justify-content-between align-items-center" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#importCollapse">
-        <div class="d-flex align-items-center">
-            <h5 class="mb-0 me-3">Импорт данных</h5>
-            {% if last_import %}
-            <small class="text-muted">
-                Последний импорт: <strong>{{ last_import.filename }}</strong> 
-                (срез: {{ last_import.snapshot_dt|date:"d.m.Y H:i" }})
-            </small>
-            {% endif %}
+{% if user|has_groups:"Импорт,Админ" %}
+    <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center" style="cursor: pointer;" data-bs-toggle="collapse" data-bs-target="#importCollapse">
+            <div class="d-flex align-items-center">
+                <h5 class="mb-0 me-3">Импорт данных</h5>
+                {% if last_import %}
+                <small class="text-muted">
+                    Последний импорт: <strong>{{ last_import.filename }}</strong> 
+                    (срез: {{ last_import.snapshot_dt|date:"d.m.Y H:i" }})
+                </small>
+                {% endif %}
+            </div>
+            <div>
+                {% if import_history %}
+                <button type="button" class="btn btn-sm btn-outline-info me-2" data-bs-toggle="modal" data-bs-target="#historyModal" onclick="event.stopPropagation();">
+                    История загрузок
+                </button>
+                {% endif %}
+                <i class="bi bi-chevron-down"></i>
+            </div>
         </div>
-        <div>
-            {% if import_history %}
-            <button type="button" class="btn btn-sm btn-outline-info me-2" data-bs-toggle="modal" data-bs-target="#historyModal" onclick="event.stopPropagation();">
-                История загрузок
-            </button>
-            {% endif %}
-            <i class="bi bi-chevron-down"></i>
-        </div>
-    </div>
-    <div class="collapse show" id="importCollapse">
-        <div class="card-body">
-            <form method="post" enctype="multipart/form-data" class="row">
-                {% csrf_token %}
-                <input type="hidden" name="upload_file" value="true">
-                
-                {% for field in import_form %}
-                    <div class="col-md-5 mb-3">
-                        <label class="form-label">{{ field.label }}</label>
-                        {{ field }}
-                        {% if field.help_text %}
-                            <div class="form-text small">{{ field.help_text }}</div>
-                        {% endif %}
-                        {% if field.errors %}
-                            <div class="text-danger small">{{ field.errors }}</div>
-                        {% endif %}
+        <div class="collapse show" id="importCollapse">
+            <div class="card-body">
+                <form method="post" enctype="multipart/form-data" class="row">
+                    {% csrf_token %}
+                    <input type="hidden" name="upload_file" value="true">
+                    
+                    {% for field in import_form %}
+                        <div class="col-md-5 mb-3">
+                            <label class="form-label">{{ field.label }}</label>
+                            {{ field }}
+                            {% if field.help_text %}
+                                <div class="form-text small">{{ field.help_text }}</div>
+                            {% endif %}
+                            {% if field.errors %}
+                                <div class="text-danger small">{{ field.errors }}</div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                    <div class="col-md-2 mb-3">
+                        <label class="form-label d-block">&nbsp;</label>
+                        <button type="submit" class="btn btn-primary w-100">Загрузить</button>
                     </div>
-                {% endfor %}
-                <div class="col-md-2 mb-3">
-                    <label class="form-label d-block">&nbsp;</label>
-                    <button type="submit" class="btn btn-primary w-100">Загрузить</button>
-                </div>
-            </form>
+                </form>
+            </div>
         </div>
     </div>
-</div>
+{% endif %}
 
 <!-- Import History Modal -->
 <div class="modal fade" id="historyModal" tabindex="-1" aria-labelledby="historyModalLabel" aria-hidden="true">
