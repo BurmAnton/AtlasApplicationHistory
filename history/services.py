@@ -111,6 +111,20 @@ def _import_dataframe(df, snapshot_dt, filename: str):
             'program_id': get_val('ID программы в заявке'),
             'current_atlas_status': get_val('Статус заявки в Атлас'),
             'current_rr_status': get_val('Статус заявки в РР'),
+            'atlas_status': get_val('Статус заявки в Атлас'),
+            'rr_status': get_val('Статус заявки в РР'),
+            'LMS': get_val('Программа в LMS (ссылка)'),
+            'contact': get_val('Контактная информация (телефон)'),
+            'sex': get_val("Пол"),
+            'birthday': parse_date(row.get('Дата рождения')),
+            'contry': get_val('Гражданство'),
+            'passport': str(get_val('Серия паспорта')) + " " + str(get_val('Номер паспорта')),
+            'passport_issued_at': parse_date(row.get('Дата выдачи')),
+            'passport_issued_by': get_val('Кем выдан паспорт'),
+            'reg_address': get_val('Место регистрации'),
+            'rr_application': get_val('Номер заявления на РР'),
+            'employment': True if get_val('Трудоустройство') == 'Подтверждено' else False
+
         }
 
         if rr_id in existing_apps:
@@ -195,9 +209,35 @@ def _import_dataframe(df, snapshot_dt, filename: str):
         # 2. Bulk update existing applications
         if update_apps:
             fields_to_update = [
-                'last_name', 'first_name', 'middle_name', 'email', 'start_date', 'end_date',
-                'program_name', 'region', 'category', 'snils', 'request_date', 'program_id',
-                'current_atlas_status', 'current_rr_status', 'prev_atlas_status', 'prev_rr_status'
+                'last_name',
+                'first_name',
+                'middle_name',
+                'email',
+                'start_date',
+                'end_date',
+                'program_name',
+                'region',
+                'category', 
+                'snils',
+                'request_date',
+                'program_id',
+                'current_atlas_status',
+                'current_rr_status',
+                'prev_atlas_status',
+                'prev_rr_status',
+                'atlas_status',
+                'rr_status',
+                'LMS',
+                'contact',
+                'sex',
+                'birthday',
+                'contry',
+                'passport',
+                'passport_issued_at',
+                'passport_issued_by',
+                'reg_address',
+                'rr_application',
+                'employment'
             ]
             Application.objects.bulk_update(update_apps, fields_to_update)
 
@@ -299,6 +339,19 @@ def export_to_excel(queryset, selected_date=None):
             'Текущий Статус РР': current_rr,
             'Предыдущий Статус Атлас': prev_atlas,
             'Предыдущий Статус РР': prev_rr,
+            'Статус заявки в Атлас': app.atlas_status,
+            'Статус заявки в РР': app.rr_status,
+            'Программа в LMS': app.LMS,
+            'Контактная информация': app.contact,
+            'Пол': app.sex,
+            'Дата рождения': app.birthday,
+            'Гражданство': app.contry,
+            'Паспорт': app.passport,
+            'Дата выдачи': app.passport_issued_at,
+            'Кем выдан паспорт': app.passport_issued_by,
+            'Место регистрации': app.reg_address,
+            'Номер заявления на РР': app.rr_application,
+            'Трудоустройство': "Подтверждено" if app.employment == True else "Не подтверждено"
         }
         data.append(row)
     

@@ -29,6 +29,21 @@ class Application(models.Model):
     prev_atlas_status = models.CharField(max_length=255, verbose_name="Предыдущий статус Атлас", blank=True, null=True)
     prev_rr_status = models.CharField(max_length=255, verbose_name="Предыдущий статус РР", blank=True, null=True)
 
+    atlas_status = models.CharField(max_length=255, verbose_name="Статус заявки в Атлас", blank=True, null=True)
+    rr_status = models.CharField(max_length=255, verbose_name="Статус заявки в РР", blank=True, null=True)
+    LMS = models.CharField(max_length=255, verbose_name="Программа в LMS", blank=True, null=True)
+    contact = models.CharField(max_length=255, verbose_name="Контактная информация", blank=True, null=True)
+    sex = models.CharField(max_length=255, verbose_name="Пол", blank=True, null=True)
+    birthday = models.DateField(verbose_name="Дата рождения", blank=True, null=True)
+    contry = models.CharField(max_length=255, verbose_name="Гражданство", blank=True, null=True)
+    passport = models.CharField(max_length=255, verbose_name="Серия и номер паспорта", blank=True, null=True)
+    passport_issued_at = models.DateField(verbose_name="Дата выдачи", blank=True, null=True)
+    passport_issued_by = models.CharField(max_length=255, verbose_name="Кем выдан паспорт", blank=True, null=True)
+    reg_address = models.CharField(max_length=255, verbose_name="Место регистрации", blank=True, null=True)
+    rr_application = models.CharField(max_length=255, verbose_name="Номер заявления на РР", blank=True, null=True)
+    employment = models.BooleanField(verbose_name="Трудоустройство", default=False)
+
+
     def __str__(self):
         return f"{self.last_name} {self.first_name} ({self.rr_id})"
 
