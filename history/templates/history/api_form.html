@@ -1,0 +1,365 @@
+{% extends 'history/base.html' %}
+{% load history_extras %}
+{% load static %}
+{% block extra_css %}
+    <style>
+        .messages{
+            display: none;
+        }
+        .container{
+            width: 95% !important;
+            max-width: 95% !important;
+        }
+        label{
+            font-size: smaller;
+            text-align: right;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<body>
+    {% if user|has_groups:"Админ" %}
+    <div class="row" style="height: 100%;">
+        <!-- Левая колонка: форма для тестов -->
+        <div class="col-md-6">
+            <div class="container-fluid">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>Списки заявок</h5>
+                    </div>
+                    <div class="card-body" style="height: 780px">
+                        <form method="post">
+                            {% csrf_token %}
+
+                            <div class="mb-3 position-relative">
+                                <label for="password" class="form-label">Токен</label>
+                                <div class="input-group">
+                                    <input type="password" readonly class="form-control form-control-sm" id="password" value="{{ token }}">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="togglePassword" style="width: 20%;">Показать</button>
+                                </div>
+                            </div>
+
+                            <!-- Статус в ATLAS -->
+                            <div class="mb-3 row align-items-center">
+                                <label for="currentAtlasStatusInput" class="col-sm-2 col-form-label">Статус в ATLAS</label>
+                                <div class="col-sm-8">
+                                    <input type="text" class="form-control form-control-sm" name="current_atlas_status" id="currentAtlasStatusInput">
+                                </div>
+                                <div class="col-sm-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" data-field-name="current_atlas_status" id="currentAtlasStatusContains" >
+                                        <label class="form-check-label" for="currentAtlasStatusContains">содержит</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Программа -->
+                            <div class="mb-3 row align-items-center">
+                                <label for="programNameInput" class="col-sm-2 col-form-label">Программа</label>
+                                <div class="col-sm-8">
+                                    <input type="text" class="form-control form-control-sm" name="program_name" id="programNameInput">
+                                </div>
+                                <div class="col-sm-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" data-field-name="program_name" id="programNameContains">
+                                        <label class="form-check-label" for="programNameContains">содержит</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Даты -->
+                            <div class="mb-3 row align-items-center">
+                                <label for="startDateInput" class="col-sm-2 col-form-label">Дата начала</label>
+                                <div class="col-sm-8">
+                                    <input type="text" class="form-control form-control-sm" name="start_date" id="startDateInput">
+                                </div>
+                            </div>
+
+                            <div class="mb-3 row align-items-center">
+                                <label for="endDateInput" class="col-sm-2 col-form-label">Дата окончания</label>
+                                <div class="col-sm-8">
+                                    <input type="text" class="form-control form-control-sm" name="end_date" id="endDateInput">
+                                </div>
+                            </div>
+
+                            <!-- Регион -->
+                            <div class="mb-3 row align-items-center">
+                                <label for="regionInput" class="col-sm-2 col-form-label">Регион</label>
+                                <div class="col-sm-8">
+                                    <input type="text" class="form-control form-control-sm" name="region" id="regionInput">
+                                </div>
+                                <div class="col-sm-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" data-field-name="region" id="regionContains">
+                                        <label class="form-check-label" for="regionContains">содержит</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Категория -->
+                            <div class="mb-3 row align-items-center">
+                                <label for="categoryInput" class="col-sm-2 col-form-label">Категория</label>
+                                <div class="col-sm-8">
+                                    <input type="text" class="form-control form-control-sm"  name="category" id="categoryInput">
+                                </div>
+                                <div class="col-sm-2">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" data-field-name="category" id="categoryContains">
+                                        <label class="form-check-label" for="categoryContains">содержит</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Ссылка API -->
+                            <div class="mb-3">
+                                <label for="apiLink" class="form-label">Ссылка API для fetch</label>
+                                <input type="text" readonly class="form-control form-control-sm" id="apiLink" name="apiLink" value="{{ URL|safe }}">
+                            </div>
+
+                            <button type="submit" class="btn btn-primary btn-sm">Отправить</button>
+                        </form>
+
+
+
+                        <div class="card" style="margin-top: 12px; padding: 1%; height: 30%; overflow-y: auto; font-size: small;" >
+                            <pre id="JsonResponse"></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Правая колонка: контент документации -->
+        <div class="col-md-6">
+            <div class="container-fluid">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>REST API</h5>
+                    </div>
+
+                    <div class="card-body" style="height: 780px; overflow-y: auto;">
+
+                        <p class="lead">
+                            Документация по REST API для получения списков заявок.
+                        </p>
+
+
+                        <!-- 1. Токен и авторизация -->
+                        <section class="mb-5">
+                            <h2 class="h4 mb-3">1. Регистрация токена и авторизация</h2>
+
+                            <p>Для доступа к API требуется токен.</p>
+
+                            <ol>
+                                <li>В админ‑панели Django перейдите в раздел "Токены".</li>
+                                <li>Создайте новый токен для нужного пользователя.</li>
+                            </ol>
+
+                            <p>Для запросов используйте заголовок:</p>
+                            <table class="table table-sm table-bordered">
+                                <thead>
+                                <tr>
+                                    <th>Заголовок</th>
+                                    <th>Значение</th>
+                                    <th>Описание</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr>
+                                    <td><code>Authorization</code></td>
+                                    <td><code>Token YOUR_TOKEN_HERE</code></td>
+                                    <td>Токен, выданный в админ‑панели.</td>
+                                </tr>
+                                <tr>
+                                    <td><code>Content-Type</code></td>
+                                    <td><code>application/json</code></td>
+                                    <td>Указывает, что запрос и ответ в формате JSON.</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </section>
+
+
+                        <!-- 2. Общая информация -->
+                        <section class="mb-5">
+                            <h2 class="h4 mb-3">2. Общая информация</h2>
+
+                            <ul class="list-unstyled">
+                                <li><strong>Метод HTTP:</strong> <code>GET</code></li>
+                                <li><strong>Эндпоинт:</strong> <code>/api/user-progress/</code></li>
+                                <li><strong>Content-Type:</strong> <code>application/json</code></li>
+                            </ul>
+
+                            <p>Пример запроса:</p>
+                            <pre class="bg-dark text-white p-3 rounded">GET /api/user-progress/<br>Host: 127.0.0.1:8000<br>Token abc123def456ghi789<br>Content-Type: application/json</pre>
+                        </section>
+
+
+                        <!-- 3. Доступные фильтры -->
+                        <section class="mb-5">
+                            <h2 class="h4 mb-3">3. Доступные фильтры</h2>
+
+                            <p>Фильтры передаются как параметры GET‑запроса (в URL). Ниже — список полей и вариантов фильтрации.</p>
+
+                            <table class="table table-sm table-bordered">
+                                <thead>
+                                <tr>
+                                    <th>Поле</th>
+                                    <th>Параметр</th>
+                                    <th>Описание</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr>
+                                    <td><code>start_date</code></td>
+                                    <td><code>start_date=YYYY-MM-DD</code></td>
+                                    <td>точное совпадение по дате начала</td>
+                                </tr>
+                                <tr>
+                                    <td><code>end_date</code></td>
+                                    <td><code>end_date=YYYY-MM-DD</code></td>
+                                    <td>точное совпадение по дате окончания</td>
+                                </tr>
+                                <tr>
+                                    <td><code>program_name</code></td>
+                                    <td><code>program_name=...</code></td>
+                                    <td>точное совпадение по названию программы</td>
+                                </tr>
+                                <tr>
+                                    <td><code>program_name</code></td>
+                                    <td><code>program_name__contains=...</code></td>
+                                    <td>поиск по вхождению в название программы</td>
+                                </tr>
+                                <tr>
+                                    <td><code>region</code></td>
+                                    <td><code>region=...</code></td>
+                                    <td>точное совпадение по региону</td>
+                                </tr>
+                                <tr>
+                                    <td><code>region</code></td>
+                                    <td><code>region__contains=...</code></td>
+                                    <td>поиск по вхождению в регион</td>
+                                </tr>
+                                <tr>
+                                    <td><code>category</code></td>
+                                    <td><code>category=...</code></td>
+                                    <td>точное совпадение по категории</td>
+                                </tr>
+                                <tr>
+                                    <td><code>category</code></td>
+                                    <td><code>category__contains=...</code></td>
+                                    <td>поиск по вхождению в категорию</td>
+                                </tr>
+                                <tr>
+                                    <td><code>current_atlas_status</code></td>
+                                    <td><code>current_atlas_status__contains=...</code></td>
+                                    <td>поиск по вхождению в статус ATLAS</td>
+                                </tr>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </section>
+
+
+                        <!-- 4. Примеры запросов -->
+                        <section class="mb-5">
+                            <h2 class="h4 mb-3">4. Примеры запросов</h2>
+
+                            <p>Поиск по программе (точное совпадение):</p>
+                            <pre class="bg-dark text-white p-3 rounded">GET /api/user-progress/?program_name=Организация+работы+с+...+лекарственными+средствами</pre>
+
+                            <p>Поиск по программе с вхождением:</p>
+                            <pre class="bg-dark text-white p-3 rounded">GET /api/user-progress/?program_name__contains=Организация</pre>
+
+                            <p>Фильтр по региону и категории:</p>
+                            <pre class="bg-dark text-white p-3 rounded">GET /api/user-progress/?region__contains=Калужская&category__contains=ищущий</pre>
+                        </section>
+
+
+                        <!-- 5. Коды ответов -->
+                        <section class="mb-5">
+                            <h2 class="h4 mb-3">5. Коды ответов</h2>
+
+                            <table class="table table-sm table-bordered">
+                                <thead>
+                                <tr>
+                                    <th>Код</th>
+                                    <th>Описание</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr>
+                                    <td><code>200 OK</code></td>
+                                    <td>Успешный запрос, в теле — список записей.</td>
+                                </tr>
+                                <tr>
+                                    <td><code>401 Unauthorized</code></td>
+                                    <td>Отсутствует или неверный токен.</td>
+                                </tr>
+                                <tr>
+                                    <td><code>403 Forbidden</code></td>
+                                    <td>Пользователь не имеет прав на доступ к данным.</td>
+                                </tr>
+                                <tr>
+                                    <td><code>400 Bad Request</code></td>
+                                    <td>Неверные параметры фильтрации (например, некорректный формат даты).</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </section>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <h1> Доступ к REST API имеет только администрация </h1>
+    {% endif %}
+</body>
+
+
+<script>
+    document.getElementById('togglePassword').addEventListener('click', function () {
+    const passwordInput = document.getElementById('password');
+    const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+    passwordInput.setAttribute('type', type);
+    this.textContent = type === 'password' ? 'Показать' : 'Скрыть';
+    });
+    pre = document.getElementById('JsonResponse')
+    const jsonResponse = {{ JsonReponse|safe  }};
+    const formattedJson = JSON.stringify(jsonResponse, null, 2);
+    pre.textContent = formattedJson;
+
+    
+   function updateTextInputNames() {
+    // Берём чекбоксы без name, но с data-field-name
+    const checkboxes = document.querySelectorAll('input[type="checkbox"][data-field-name]');
+
+    checkboxes.forEach(checkbox => {
+            const baseName = checkbox.dataset.fieldName;  // например, "program_name"
+            const textInput = document.querySelector(`input[type="text"][name="${baseName}"]`);
+
+            if (textInput) {
+                if (checkbox.checked) {
+                    // меняем name текстового поля на __contains
+                    textInput.name = baseName + '__contains';
+                } else {
+                    // возвращаем базовое имя
+                    textInput.name = baseName;
+                }
+            }
+        });
+    }
+
+    // Слушаем изменения чекбоксов
+    document.querySelectorAll('input[type="checkbox"][data-field-name]').forEach(checkbox => {
+        checkbox.addEventListener('change', updateTextInputNames);
+    });
+
+    // Вызываем при загрузке
+    updateTextInputNames()
+
+
+</script>
+{% endblock %}

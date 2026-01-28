@@ -17,6 +17,7 @@
             margin-bottom: 2px;
         }
     </style>
+    {% block extra_css %}{% endblock %}
 </head>
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
@@ -33,6 +34,11 @@
                     {% if user|has_groups:"Импорт,Админ" %}
                         <li class="nav-item">
                             <a class="nav-link active" href="/admin">Админ панель</a>
+                        </li>
+                    {% endif %}
+                    {% if user|has_groups:"Админ" %}
+                        <li class="nav-item">
+                            <a class="nav-link active" href="/api-guide">REST API</a>
                         </li>
                     {% endif %}
                 </ul>

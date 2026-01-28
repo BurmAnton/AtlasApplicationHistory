@@ -183,3 +183,111 @@ def logout_view(request):
     from django.contrib.auth import logout
     logout(request)
     return redirect('/')
+
+import django_filters
+from rest_framework import serializers
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.authentication import TokenAuthentication
+from rest_framework import viewsets
+from django_filters.rest_framework import DjangoFilterBackend
+
+
+def api_guide(request):
+    from django.contrib.auth.models import User
+    from rest_framework.authtoken.models import Token
+    import requests
+    import urllib.parse
+
+    if not request.user.is_authenticated:
+        messages.warning(request, 'Для доступа к REST API необходимо войти в систему.')
+        return redirect(f'{settings.LOGIN_URL}?next={request.path}')
+    
+    
+    login = User.objects.filter(username=request.user.username).first()
+    tkn = Token.objects.filter(user=login).first()
+    
+    url = 'http://127.0.0.1:8000/api/user-progress'
+    headers = { 'Authorization': f'Token {tkn}' }
+
+    params = {}
+    for arg in request.POST.dict():
+        value = request.POST.dict().get(arg)
+        if arg != 'csrfmiddlewaretoken' and arg != 'apiLink' and value != '':
+            params.setdefault(arg, value)
+    
+    if request.method == 'POST':
+        response = requests.get(url,headers=headers, params=params)
+    else:
+        response = requests.get(url,headers=headers)
+    import json
+    context={
+        'login': login,
+        'token': tkn,
+        'JsonReponse': json.dumps(response.json()[1:51]),
+        'URL': str(urllib.parse.unquote(response.url))
+    }
+
+    return render(request, "history/api_form.html", context=context)
+
+class ApplicationSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Application
+        fields =[
+            'rr_id',
+            'last_name',
+            'first_name',
+            'middle_name',
+            'email',
+            'start_date',
+            'end_date',
+            'program_name',
+            'region',
+            'category',
+            'snils',
+            'request_date',
+            'program_id',
+            'current_atlas_status',
+            'current_rr_status',
+            'atlas_status',
+            'rr_status',
+            'LMS',
+            'contact',
+            'sex',
+            'birthday',
+            'contry',
+            'passport',
+            'passport_issued_at',
+            'passport_issued_by',
+            'reg_address',
+            'rr_application',
+            'employment'
+        ]
+
+class ApplicationFilter(django_filters.FilterSet):
+    current_atlas_status = django_filters.CharFilter(field_name='current_atlas_status', lookup_expr='exact')
+    current_atlas_status__contains = django_filters.CharFilter(field_name='current_atlas_status', lookup_expr='contains')
+    
+    program_name = django_filters.CharFilter(field_name='program_name', lookup_expr='exact')
+    program_name__contains = django_filters.CharFilter(field_name='program_name', lookup_expr='contains')
+    
+    start_date = django_filters.CharFilter(field_name='start_date', lookup_expr='exact')
+    end_date = django_filters.CharFilter(field_name='end_date', lookup_expr='exact')
+    
+    region = django_filters.CharFilter(field_name='region', lookup_expr='exact')
+    region__contains = django_filters.CharFilter(field_name='region', lookup_expr='contains')
+
+    category = django_filters.CharFilter(field_name='category', lookup_expr='exact')
+    category__contains = django_filters.CharFilter(field_name='category', lookup_expr='contains')
+
+    class Meta:
+        model = Application
+        fields = [] 
+
+class ApplicationViewSet(viewsets.ReadOnlyModelViewSet):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+    filterset_class = ApplicationFilter
+    queryset = Application.objects.all()
+    serializer_class = ApplicationSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['current_atlas_status', 'program_name', 'category', 'region']
