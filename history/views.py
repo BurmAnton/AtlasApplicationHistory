@@ -206,7 +206,7 @@ def api_guide(request):
     login = User.objects.filter(username=request.user.username).first()
     tkn = Token.objects.filter(user=login).first()
     
-    url = 'http://127.0.0.1:8000/api/user-progress'
+    url = f'http://{request.get_host()}/api/user-progress' 
     headers = { 'Authorization': f'Token {tkn}' }
 
     params = {}
