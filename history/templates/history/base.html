@@ -16,6 +16,9 @@
             padding: 2px 0;
             margin-bottom: 2px;
         }
+        .dropdown:hover .dropdown-menu{
+            display: block;
+        }
     </style>
     {% block extra_css %}{% endblock %}
 </head>
@@ -37,8 +40,12 @@
                         </li>
                     {% endif %}
                     {% if user|has_groups:"Админ" %}
-                        <li class="nav-item">
-                            <a class="nav-link active" href="/api-guide">REST API</a>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle active" href="/api-guide" aria-expanded="false" >REST API</a>
+                            <ul class="dropdown-menu" style="margin-top: 0; ">
+                                <li><a class="dropdown-item" href="/api-guide">Заявки</a></li>
+                                <li><a class="dropdown-item" href="/api-guide?history">История</a></li>
+                            </ul>
                         </li>
                     {% endif %}
                 </ul>
