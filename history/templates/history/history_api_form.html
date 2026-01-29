@@ -1,0 +1,189 @@
+{% extends 'history/base.html' %}
+{% load history_extras %}
+{% load static %}
+{% block extra_css %}
+    <style>
+        .messages{
+            display: none;
+        }
+        .container{
+            width: 95% !important;
+            max-width: 95% !important;
+        }
+        label{
+            font-size: smaller;
+            text-align: right;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<body>
+    {% if user|has_groups:"Админ" %}
+    <div class="row" style="height: 100%;">
+        <!-- Левая колонка: форма для тестов -->
+        <div class="col-md-6">
+            <div class="container-fluid">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>История заявок</h5>
+                    </div>
+                    <div class="card-body" style="height: 780px">
+                        <form method="post">
+                            {% csrf_token %}
+
+                            <div class="mb-3 position-relative">
+                                <label for="password" class="form-label">Токен</label>
+                                <div class="input-group">
+                                    <input type="password" readonly class="form-control form-control-sm" id="password" value="{{ token }}">
+                                    <button type="button" class="btn btn-outline-secondary btn-sm" id="togglePassword" style="width: 20%;">Показать</button>
+                                </div>
+                            </div>
+
+                            <!-- Заявка -->
+                            <div class="mb-3 position-relative">
+                                <label for="applicationInput" class="form-label">ID заявки из РР</label>
+                                <input type="text" class="form-control form-control-sm" name="application_id" id="applicationInput">
+                            </div>
+                            <!-- Дата/время среза
+                            <div class="mb-3 position-relative">
+                                <label for="programNameInput" class="form-label">Дата/время среза</label>
+                                <input type="text" class="form-control form-control-sm" name="program_name" id="programNameInput">
+                            </div> -->
+                            <!-- Ссылка API -->
+                            <div class="mb-3">
+                                <label for="apiLink" class="form-label">Ссылка API для fetch</label>
+                                <input type="text" readonly class="form-control form-control-sm" id="apiLink" name="apiLink" value="{{ URL|safe }}">
+                            </div>
+
+                            <button type="submit" class="btn btn-primary btn-sm">Отправить</button>
+                        </form>
+
+
+
+                        <div class="card" style="margin-top: 12px; padding: 1%; height: 55%; overflow-y: auto; font-size: small;" >
+                            <pre id="JsonResponse"></pre>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Правая колонка: контент документации -->
+        <div class="col-md-6">
+            <div class="container-fluid">
+                <div class="card">
+                    <div class="card-header">
+                        <h5>REST API</h5>
+                    </div>
+
+                    <div class="card-body" style="height: 780px; overflow-y: auto;">
+                        <p>Эндпоинт предоставляет историю статусов по заявке (заявка → статусы, даты).</p>
+                        <ul class="list-unstyled">
+                            <li><strong>Метод HTTP:</strong> <code>GET</code></li>
+                            <li><strong>Эндпоинт:</strong> <code>/api/user-progress/</code></li>
+                            <li><strong>Content-Type:</strong> <code>application/json</code></li>
+                        </ul>
+
+                        <h2 class="h4 mb-3">1. Описание</h2>
+                        <p>Возвращает список записей истории статусов для указанной заявки. Каждая запись содержит:</p>
+                        <ul>
+                            <li><strong>application</strong> — идентификатор заявки (rr_id);</li>
+                            <li><strong>atlas_status</strong> — статус в системе ATLAS;</li>
+                            <li><strong>rr_status</strong> — статус в системе RR;</li>
+                            <li><strong>snapshot_dt</strong> — дата и время фиксации статуса.</li>
+                        </ul>
+
+                        <h2 class="h4 mb-3">2. Фильтрация</h2>
+                        <p>Доступна фильтрация только по идентификатору заявки.</p>
+                        <table class="table table-sm table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Параметр</th>
+                                    <th>Тип</th>
+                                    <th>Описание</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>application_id</code></td>
+                                    <td>string</td>
+                                    <td>Идентификатор заявки (rr_id). Поиск нечувствителен к регистру.</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h2 class="h4 mb-3">3. Пример запроса</h2>
+                        <pre class="bg-dark text-white p-3 rounded"><code>GET /api/history_application/?application_id=9817ffbc-5f63-4faa-8514-b5bf6628a6ce</code></pre>
+
+                        <h2 class="h4 mb-3">4. Пример ответа</h2>
+                        <pre class="bg-dark text-white p-3 rounded"><code>[
+    {
+        "application": "9817ffbc-5f63-4faa-8514-b5bf6628a6ce",
+        "atlas_status": "Отклонена",
+        "rr_status": "Услуга прекращена",
+        "snapshot_dt": "2025-11-13T11:00:00+03:00"
+    },
+    {
+        "application": "9817ffbc-5f63-4faa-8514-b5bf6628a6ce",
+        "atlas_status": "Принята",
+        "rr_status": "Услуга активна",
+        "snapshot_dt": "2025-11-10T09:00:00+03:00"
+    }
+]</code></pre>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <h1> Доступ к REST API имеет только администрация </h1>
+    {% endif %}
+</body>
+
+
+<script>
+    document.getElementById('togglePassword').addEventListener('click', function () {
+    const passwordInput = document.getElementById('password');
+    const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+    passwordInput.setAttribute('type', type);
+    this.textContent = type === 'password' ? 'Показать' : 'Скрыть';
+    });
+    pre = document.getElementById('JsonResponse')
+    const jsonResponse = {{ JsonReponse|safe  }};
+    const formattedJson = JSON.stringify(jsonResponse, null, 2);
+    pre.textContent = formattedJson;
+
+    
+   function updateTextInputNames() {
+    // Берём чекбоксы без name, но с data-field-name
+    const checkboxes = document.querySelectorAll('input[type="checkbox"][data-field-name]');
+
+    checkboxes.forEach(checkbox => {
+            const baseName = checkbox.dataset.fieldName;  // например, "program_name"
+            const textInput = document.querySelector(`input[type="text"][name="${baseName}"]`);
+
+            if (textInput) {
+                if (checkbox.checked) {
+                    // меняем name текстового поля на __contains
+                    textInput.name = baseName + '__contains';
+                } else {
+                    // возвращаем базовое имя
+                    textInput.name = baseName;
+                }
+            }
+        });
+    }
+
+    // Слушаем изменения чекбоксов
+    document.querySelectorAll('input[type="checkbox"][data-field-name]').forEach(checkbox => {
+        checkbox.addEventListener('change', updateTextInputNames);
+    });
+
+    // Вызываем при загрузке
+    updateTextInputNames()
+
+
+</script>
+{% endblock %}

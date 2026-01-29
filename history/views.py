@@ -202,11 +202,16 @@ def api_guide(request):
         messages.warning(request, 'Для доступа к REST API необходимо войти в систему.')
         return redirect(f'{settings.LOGIN_URL}?next={request.path}')
     
-    
+    if not request.user.groups.filter(name="Админ"):
+        return redirect('/')
+
     login = User.objects.filter(username=request.user.username).first()
     tkn = Token.objects.filter(user=login).first()
     
-    url = f'http://{request.get_host()}/api/user-progress' 
+    group = 'application'
+    if 'history' in request.GET:
+        group = 'history-status'
+    url = f'http://{request.get_host()}/api/{group}' 
     headers = { 'Authorization': f'Token {tkn}' }
 
     params = {}
@@ -223,11 +228,12 @@ def api_guide(request):
     context={
         'login': login,
         'token': tkn,
-        'JsonReponse': json.dumps(response.json()[1:51]),
+        'JsonReponse': json.dumps(response.json()[:50]),
         'URL': str(urllib.parse.unquote(response.url))
     }
-
-    return render(request, "history/api_form.html", context=context)
+    if 'history' in request.GET:
+        return render(request, "history/history_api_form.html", context=context)
+    return render(request, "history/app_api_form.html", context=context)
 
 class ApplicationSerializer(serializers.ModelSerializer):
     class Meta:
@@ -290,4 +296,32 @@ class ApplicationViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Application.objects.all()
     serializer_class = ApplicationSerializer
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['current_atlas_status', 'program_name', 'category', 'region']
+
+class HistorySerializer(serializers.ModelSerializer):
+    application = serializers.CharField(source='application.rr_id')
+    class Meta:
+        model = StatusHistory
+        fields =[
+            'application',
+            'atlas_status',
+            'rr_status',
+            'snapshot_dt'
+        ]
+
+class HistoryFilter(django_filters.FilterSet):
+    application_id = django_filters.CharFilter(field_name='application__rr_id', lookup_expr='exact')
+
+    # snapshot_dt = django_filters.DateTimeFilter(field_name='snapshot_dt', lookup_expr='exact')
+    # snapshot_dt__contains = django_filters.DateTimeFilter(field_name='snapshot_dt', lookup_expr='contains')
+
+    class Meta:
+        model = StatusHistory
+        fields = ['application_id']
+
+class HistoryViewSet(viewsets.ReadOnlyModelViewSet):
+    authentication_classes = [TokenAuthentication]
+    permission_classes = [IsAuthenticated]
+    filterset_class = HistoryFilter
+    queryset = StatusHistory.objects.all()
+    serializer_class = HistorySerializer
+    filter_backends = [DjangoFilterBackend]
