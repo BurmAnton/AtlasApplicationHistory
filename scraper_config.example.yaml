@@ -1,0 +1,50 @@
+auth:
+  # URL страницы логина
+  login_url: "https://atlas.firpo.ru/login"
+  # Данные для авторизации
+  username: "your_email@example.com"
+  password: "your_password"
+  # Селекторы для авторизации
+  username_selector: "input[name='email']"
+  password_selector: "input[name='password']"
+  submit_selector: "button[type='submit']"
+  # Селектор элемента, который появляется после успешного логина
+  success_selector: ".section-header__title"
+
+pages:
+  # URL страницы, где доступен экспорт
+  export_page_url: "https://atlas.firpo.ru/applications"
+  # Полный текст ссылки / пункта меню, по которому открывается модальное окно экспорта
+  export_link_text: "Экспорт по выбранным фильтрам"
+  # CSS‑селектор контейнера модального окна
+  modal_selector: "div.export-modal"
+  # id кнопки, которая открывает дропдаун с пунктом экспорта (если требуется)
+  # Например: "__BVID__176__BV_toggle_"
+  export_toggle_id: "__BVID__176__BV_toggle_"
+
+modal:
+  # контейнер, который появляется после открытия модалки
+  # Актуальный класс для Atlas: .export-modal_content-wrap
+  list_container_selector: ".export-modal__content-wrap"
+  # ОДНА строка истории
+  item_selector: ".export-item"
+  # элемент внутри строки, где прямо написано "09.12.2025, 14:28"
+  item_text_selector: ".export-item__text, p"
+  # кнопка скачивания справа от даты (иконка-дискета)
+  download_button_selector: ".export-item__btn, button"
+
+browser:
+  # chrome или edge
+  driver: "chrome"
+  # Папка для скачивания файлов (по умолчанию ./downloads)
+  download_dir: "downloads"
+  # Запуск в headless-режиме (для сервера лучше оставить true)
+  headless: true
+  # Явный путь до бинаря браузера (опционально)
+  # Если не указан, Selenium попытается найти браузер автоматически
+  # binary_path: "/usr/bin/google-chrome"
+  # Таймауты ожиданий (секунды)
+  implicit_wait: 5
+  explicit_wait: 20
+  # Максимальное количество итераций при прокрутке истории
+  max_scroll_iterations: 30
