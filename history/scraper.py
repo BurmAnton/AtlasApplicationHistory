@@ -75,19 +75,59 @@ def _build_driver(config: Dict[str, Any]):
         # Chrome/Chromium по умолчанию
         options = webdriver.ChromeOptions()
         if headless:
-            # Headless-режим; DevToolsActivePort часто лечится обычным --headless
-            options.add_argument("--headless")
+            # Headless-режим для Chrome 109+ (новый стабильный режим)
+            options.add_argument("--headless=new")
         options.add_argument("--disable-gpu")
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
-        options.add_argument("--remote-debugging-port=0")
+        options.add_argument("--disable-extensions")
+        options.add_argument("--disable-software-rasterizer")
+        options.add_argument("--disable-setuid-sandbox")
         # Раздельный профиль, чтобы избежать конфликтов snap/chromium
         options.add_argument("--user-data-dir=/tmp/chrome-atlas-history")
 
         # Возможность задать путь до бинаря через config['browser']['binary_path']
+        # Если не указан, пытаемся найти браузер в стандартных местах
         binary_path = browser_cfg.get("binary_path")
+        common_paths = [
+            "/usr/bin/google-chrome",
+            "/usr/bin/google-chrome-stable",
+            "/usr/bin/chromium-browser",
+            "/usr/bin/chromium",
+            "/snap/bin/chromium",
+        ]
+        
         if binary_path:
-            options.binary_location = binary_path
+            binary_path_obj = Path(binary_path)
+            if not binary_path_obj.exists():
+                # Пытаемся найти Chrome в стандартных местах
+                found = False
+                for common_path in common_paths:
+                    if Path(common_path).exists():
+                        binary_path = common_path
+                        found = True
+                        print(
+                            f"[scraper] Указанный путь {browser_cfg.get('binary_path')} не существует. "
+                            f"Используется найденный: {binary_path}"
+                        )
+                        break
+                if not found:
+                    raise FileNotFoundError(
+                        f"Chrome/Chromium не найден по указанному пути: {browser_cfg.get('binary_path')}. "
+                        f"Проверьте установку браузера или укажите правильный путь в конфиге."
+                    )
+        else:
+            # Если binary_path не указан, пытаемся найти браузер автоматически
+            found = False
+            for common_path in common_paths:
+                if Path(common_path).exists():
+                    binary_path = common_path
+                    found = True
+                    print(f"[scraper] Автоматически найден браузер: {binary_path}")
+                    break
+        
+        if binary_path:
+            options.binary_location = str(binary_path)
             print(f"[scraper] Используется бинарь браузера: {binary_path}")
         prefs = {
             "download.default_directory": str(download_dir),
@@ -97,10 +137,28 @@ def _build_driver(config: Dict[str, Any]):
         }
         options.add_experimental_option("prefs", prefs)
 
-        # Для Chrome используем Selenium Manager (без webdriver-manager),
-        # чтобы автоматически подобрать совместимый chromedriver.
-        # Достаточно установленного /usr/bin/google-chrome.
-        driver = webdriver.Chrome(options=options)
+        # Пытаемся найти локальный chromedriver рядом с бинарём Chrome
+        # (для Chrome for Testing, который поставляется вместе с chromedriver)
+        chromedriver_path = browser_cfg.get("chromedriver_path")
+        if not chromedriver_path and binary_path:
+            # Ищем chromedriver в той же директории или в соседней папке
+            binary_dir = Path(binary_path).parent
+            possible_paths = [
+                binary_dir / "chromedriver",
+                binary_dir.parent / "chromedriver-linux64" / "chromedriver",
+            ]
+            for p in possible_paths:
+                if p.exists():
+                    chromedriver_path = str(p)
+                    print(f"[scraper] Найден локальный chromedriver: {chromedriver_path}")
+                    break
+        
+        if chromedriver_path:
+            service = ChromeService(executable_path=chromedriver_path)
+        else:
+            # Используем webdriver-manager для автоматического скачивания
+            service = ChromeService(ChromeDriverManager().install())
+        driver = webdriver.Chrome(service=service, options=options)
 
     # Гарантируем минимальную ширину окна (для десктоп‑версии интерфейса)
     min_width = 1500
