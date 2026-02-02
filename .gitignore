@@ -28,6 +28,8 @@ deploy/*
 
 # Секреты и локальные настройки
 .env
+scraper_config.yaml
 
 #
 /downloads/*
+.chrome/*

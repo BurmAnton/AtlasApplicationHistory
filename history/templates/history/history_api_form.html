@@ -43,13 +43,13 @@
                             <!-- Заявка -->
                             <div class="mb-3 position-relative">
                                 <label for="applicationInput" class="form-label">ID заявки из РР</label>
-                                <input type="text" class="form-control form-control-sm" name="application_id" id="applicationInput" placeholder="00186e3b-4087-4a9d-b5bf-1cdaf8908484">
+                                <input type="text" class="form-control form-control-sm" name="application_id" id="applicationInput">
                             </div>
-                            <!-- Дата/время среза -->
+                            <!-- Дата/время среза
                             <div class="mb-3 position-relative">
                                 <label for="programNameInput" class="form-label">Дата/время среза</label>
-                                <input type="text" class="form-control form-control-sm" name="snapshot_dt" id="programNameInput" placeholder="YYYY-MM-DD">
-                            </div>
+                                <input type="text" class="form-control form-control-sm" name="program_name" id="programNameInput">
+                            </div> -->
                             <!-- Ссылка API -->
                             <div class="mb-3">
                                 <label for="apiLink" class="form-label">Ссылка API для fetch</label>
@@ -109,11 +109,6 @@
                                     <td><code>application_id</code></td>
                                     <td>string</td>
                                     <td>Идентификатор заявки (rr_id). Поиск нечувствителен к регистру.</td>
-                                </tr>
-                                <tr>
-                                    <td><code>snapshot_dt</code></td>
-                                    <td>string</td>
-                                    <td>Дата и время среза. Поиск по совпадению в поле.</td>
                                 </tr>
                             </tbody>
                         </table>

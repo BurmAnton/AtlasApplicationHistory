@@ -311,11 +311,12 @@ class HistorySerializer(serializers.ModelSerializer):
 class HistoryFilter(django_filters.FilterSet):
     application_id = django_filters.CharFilter(field_name='application__rr_id', lookup_expr='exact')
 
-    snapshot_dt = django_filters.CharFilter(field_name='snapshot_dt', lookup_expr='contains')
+    # snapshot_dt = django_filters.DateTimeFilter(field_name='snapshot_dt', lookup_expr='exact')
+    # snapshot_dt__contains = django_filters.DateTimeFilter(field_name='snapshot_dt', lookup_expr='contains')
 
     class Meta:
         model = StatusHistory
-        fields = []
+        fields = ['application_id']
 
 class HistoryViewSet(viewsets.ReadOnlyModelViewSet):
     authentication_classes = [TokenAuthentication]
