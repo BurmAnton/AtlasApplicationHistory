@@ -74,14 +74,14 @@
             <div class="container-fluid">
                 <div class="card">
                     <div class="card-header">
-                        <h5>REST API</h5>
+                        <h5>Документация</h5>
                     </div>
 
                     <div class="card-body" style="height: 780px; overflow-y: auto;">
                         <p>Эндпоинт предоставляет историю статусов по заявке (заявка → статусы, даты).</p>
                         <ul class="list-unstyled">
                             <li><strong>Метод HTTP:</strong> <code>GET</code></li>
-                            <li><strong>Эндпоинт:</strong> <code>/api/user-progress/</code></li>
+                            <li><strong>Эндпоинт:</strong> <code>/api/history-status/</code></li>
                             <li><strong>Content-Type:</strong> <code>application/json</code></li>
                         </ul>
 
@@ -118,24 +118,73 @@
                             </tbody>
                         </table>
 
-                        <h2 class="h4 mb-3">3. Пример запроса</h2>
-                        <pre class="bg-dark text-white p-3 rounded"><code>GET /api/history_application/?application_id=9817ffbc-5f63-4faa-8514-b5bf6628a6ce</code></pre>
+                        <h2 class="h4 mb-3">3. Пагинация</h2>
+                        <p>API использует пагинацию для разбивки истории статусов на страницы. По умолчанию возвращается 50 записей на страницу.</p>
 
-                        <h2 class="h4 mb-3">4. Пример ответа</h2>
-                        <pre class="bg-dark text-white p-3 rounded"><code>[
-    {
-        "application": "9817ffbc-5f63-4faa-8514-b5bf6628a6ce",
-        "atlas_status": "Отклонена",
-        "rr_status": "Услуга прекращена",
-        "snapshot_dt": "2025-11-13T11:00:00+03:00"
-    },
-    {
-        "application": "9817ffbc-5f63-4faa-8514-b5bf6628a6ce",
-        "atlas_status": "Принята",
-        "rr_status": "Услуга активна",
-        "snapshot_dt": "2025-11-10T09:00:00+03:00"
-    }
-]</code></pre>
+                        <table class="table table-sm table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>Параметр</th>
+                                    <th>Значение по умолчанию</th>
+                                    <th>Описание</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><code>page</code></td>
+                                    <td>1</td>
+                                    <td>Номер страницы (начинается с 1)</td>
+                                </tr>
+                                <tr>
+                                    <td><code>page_size</code></td>
+                                    <td>50</td>
+                                    <td>Количество записей на странице</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <p>Все ответы возвращаются в формате пагинации:</p>
+                        <pre class="bg-dark text-white p-3 rounded"><code>{
+    "count": 50,
+    "next": "http://127.0.0.1:8000/api/history-status/?application_id=...&page=2",
+    "previous": null,
+    "results": [
+        // массив записей истории статусов
+    ]
+}</code></pre>
+
+                        <p>Поля ответа:</p>
+                        <ul>
+                            <li><strong>count</strong> - общее количество записей истории для данной заявки</li>
+                            <li><strong>next</strong> - URL следующей страницы (null, если текущая страница последняя)</li>
+                            <li><strong>previous</strong> - URL предыдущей страницы (null, если текущая страница первая)</li>
+                            <li><strong>results</strong> - массив с записями истории статусов для текущей страницы</li>
+                        </ul>
+
+                        <h2 class="h4 mb-3">4. Пример запроса</h2>
+                        <pre class="bg-dark text-white p-3 rounded"><code>GET /api/history-status/?application_id=9817ffbc-5f63-4faa-8514-b5bf6628a6ce&page=1&page_size=20</code></pre>
+                        <p class="text-muted small">Параметры <code>page</code> и <code>page_size</code> являются опциональными.</p>
+
+                        <h2 class="h4 mb-3">5. Пример ответа</h2>
+                        <pre class="bg-dark text-white p-3 rounded"><code>{
+    "count": 2,
+    "next": null,
+    "previous": null,
+    "results": [
+        {
+            "application": "9817ffbc-5f63-4faa-8514-b5bf6628a6ce",
+            "atlas_status": "Отклонена",
+            "rr_status": "Услуга прекращена",
+            "snapshot_dt": "2025-11-13T11:00:00+03:00"
+        },
+        {
+            "application": "9817ffbc-5f63-4faa-8514-b5bf6628a6ce",
+            "atlas_status": "Принята",
+            "rr_status": "Услуга активна",
+            "snapshot_dt": "2025-11-10T09:00:00+03:00"
+        }
+    ]
+}</code></pre>
                     </div>
 
                 </div>

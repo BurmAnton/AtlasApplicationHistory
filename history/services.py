@@ -196,7 +196,7 @@ def _import_dataframe(df, snapshot_dt, filename: str):
     with transaction.atomic():
         # 1. Bulk create new applications
         if new_apps:
-            created_apps = Application.objects.bulk_create(new_apps)
+            created_apps = Application.objects.bulk_create(new_apps, batch_size=1000)
             
             for app in created_apps:
                 history_records.append(StatusHistory(
@@ -239,11 +239,11 @@ def _import_dataframe(df, snapshot_dt, filename: str):
                 'rr_application',
                 'employment'
             ]
-            Application.objects.bulk_update(update_apps, fields_to_update)
+            Application.objects.bulk_update(update_apps, fields_to_update, batch_size=1000)
 
         # 3. Bulk create history records
         if history_records:
-            StatusHistory.objects.bulk_create(history_records)
+            StatusHistory.objects.bulk_create(history_records, batch_size=1000)
             
         # 4. Create ImportHistory record
         ImportHistory.objects.create(

@@ -135,7 +135,7 @@
             <div class="container-fluid">
                 <div class="card">
                     <div class="card-header">
-                        <h5>REST API</h5>
+                        <h5>Документация</h5>
                     </div>
 
                     <div class="card-body" style="height: 780px; overflow-y: auto;">
@@ -187,12 +187,12 @@
 
                             <ul class="list-unstyled">
                                 <li><strong>Метод HTTP:</strong> <code>GET</code></li>
-                                <li><strong>Эндпоинт:</strong> <code>/api/user-progress/</code></li>
+                                <li><strong>Эндпоинт:</strong> <code>/api/application/</code></li>
                                 <li><strong>Content-Type:</strong> <code>application/json</code></li>
                             </ul>
 
                             <p>Пример запроса:</p>
-                            <pre class="bg-dark text-white p-3 rounded">GET /api/user-progress/<br>Host: 127.0.0.1:8000<br>Authorization: Token abc123def456ghi789<br>Content-Type: application/json</pre>
+                            <pre class="bg-dark text-white p-3 rounded">GET /api/application/<br>Host: 127.0.0.1:8000<br>Authorization: Token abc123def456ghi789<br>Content-Type: application/json</pre>
                         </section>
 
 
@@ -261,25 +261,75 @@
                             </table>
                         </section>
 
-
-                        <!-- 4. Примеры запросов -->
+                        <!-- 4. Пагинация -->
                         <section class="mb-5">
-                            <h2 class="h4 mb-3">4. Примеры запросов</h2>
+                            <h2 class="h4 mb-3">4. Пагинация</h2>
 
-                            <p>Поиск по программе (точное совпадение):</p>
-                            <pre class="bg-dark text-white p-3 rounded">GET /api/user-progress/?program_name=Организация+работы+с+...+лекарственными+средствами</pre>
+                            <p>API использует пагинацию для разбивки результатов на страницы. По умолчанию возвращается 50 записей на страницу.</p>
 
-                            <p>Поиск по программе с вхождением:</p>
-                            <pre class="bg-dark text-white p-3 rounded">GET /api/user-progress/?program_name__contains=Организация</pre>
+                            <table class="table table-sm table-bordered">
+                                <thead>
+                                <tr>
+                                    <th>Параметр</th>
+                                    <th>Значение по умолчанию</th>
+                                    <th>Описание</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr>
+                                    <td><code>page</code></td>
+                                    <td>1</td>
+                                    <td>Номер страницы (начинается с 1)</td>
+                                </tr>
+                                <tr>
+                                    <td><code>page_size</code></td>
+                                    <td>50</td>
+                                    <td>Количество записей на странице</td>
+                                </tr>
+                                </tbody>
+                            </table>
 
-                            <p>Фильтр по региону и категории:</p>
-                            <pre class="bg-dark text-white p-3 rounded">GET /api/user-progress/?region__contains=Калужская&category__contains=ищущий</pre>
+                            <p>Пример структуры ответа с пагинацией:</p>
+                            <pre class="bg-dark text-white p-3 rounded">{
+    "count": 1250,
+    "next": "https://127.0.0.1:8000/api/application/?page=2",
+    "previous": null,
+    "results": [
+        // массив с данными заявок
+    ]
+}</pre>
+
+                            <p>Поля ответа:</p>
+                            <ul>
+                                <li><strong>count</strong> - общее количество записей (всех страниц)</li>
+                                <li><strong>next</strong> - URL следующей страницы (null, если текущая страница последняя)</li>
+                                <li><strong>previous</strong> - URL предыдущей страницы (null, если текущая страница первая)</li>
+                                <li><strong>results</strong> - массив с данными текущей страницы</li>
+                            </ul>
+                        </section>
+
+                        <!-- 5. Примеры запросов -->
+                        <section class="mb-5">
+                            <h2 class="h4 mb-3">5. Примеры запросов</h2>
+
+                            <p>Базовый запрос с пагинацией:</p>
+                            <pre class="bg-dark text-white p-3 rounded">GET /api/application/?page=2&page_size=25</pre>
+
+                            <p>Поиск по программе с пагинацией:</p>
+                            <pre class="bg-dark text-white p-3 rounded">GET /api/application/?program_name__contains=Организация&page=1&page_size=100</pre>
+
+                            <p>Фильтр по региону и категории с пагинацией:</p>
+                            <pre class="bg-dark text-white p-3 rounded">GET /api/application/?region__contains=Калужская&category__contains=ищущий&page=3</pre>
+
+                            <p>
+                                Примечание: параметр <code>page_size</code> является опциональным. Если не указан, используется значение по умолчанию (50 записей).
+                            </p>
                         </section>
 
 
-                        <!-- 5. Коды ответов -->
+                        <!-- 6. Коды ответов -->
                         <section class="mb-5">
-                            <h2 class="h4 mb-3">5. Коды ответов</h2>
+                            <h2 class="h4 mb-3">6. Коды ответов</h2>
 
                             <table class="table table-sm table-bordered">
                                 <thead>

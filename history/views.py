@@ -188,6 +188,7 @@ import django_filters
 from rest_framework import serializers
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import TokenAuthentication
+from rest_framework.pagination import PageNumberPagination
 from rest_framework import viewsets
 from django_filters.rest_framework import DjangoFilterBackend
 
@@ -225,15 +226,23 @@ def api_guide(request):
     else:
         response = requests.get(url,headers=headers)
     import json
+    try:
+        JsonReponse = json.dumps(response.json())
+    except:
+        JsonReponse = {"result": "Не предоставлен токен!"}
     context={
         'login': login,
         'token': tkn,
-        'JsonReponse': json.dumps(response.json()[:50]),
+        'JsonReponse': JsonReponse,
         'URL': str(urllib.parse.unquote(response.url))
     }
     if 'history' in request.GET:
         return render(request, "history/history_api_form.html", context=context)
     return render(request, "history/app_api_form.html", context=context)
+
+class Pagination(PageNumberPagination):
+    page_size = 50
+    page_size_query_param = "page_size"
 
 class ApplicationSerializer(serializers.ModelSerializer):
     class Meta:
@@ -296,6 +305,7 @@ class ApplicationViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = Application.objects.all()
     serializer_class = ApplicationSerializer
     filter_backends = [DjangoFilterBackend]
+    pagination_class = Pagination
 
 class HistorySerializer(serializers.ModelSerializer):
     application = serializers.CharField(source='application.rr_id')
@@ -324,3 +334,4 @@ class HistoryViewSet(viewsets.ReadOnlyModelViewSet):
     queryset = StatusHistory.objects.all()
     serializer_class = HistorySerializer
     filter_backends = [DjangoFilterBackend]
+    pagination_class = Pagination
