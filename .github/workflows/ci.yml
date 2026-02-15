@@ -2,7 +2,9 @@ name: Django CI
 
 on:
   push:
+    branches: [ main, master, develop, tests ]
   pull_request:
+    branches: [ main, master, develop ]
 
 jobs:
   test:
@@ -12,39 +14,76 @@ jobs:
       postgres:
         image: postgres:15
         env:
-          POSTGRES_DB: test_db
+          POSTGRES_DB: history_test
           POSTGRES_USER: postgres
           POSTGRES_PASSWORD: postgres
         ports:
           - 5432:5432
         options: >-
-          --health-cmd="pg_isready"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=5
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
-    env:
-      DATABASE_URL: postgres://postgres:postgres@localhost:5432/test_db
-      SECRET_KEY: test-secret-key
-      DEBUG: "False"
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
 
     steps:
-      - uses: actions/checkout@v4
+    - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        cache: 'pip'
 
-      - name: Install dependencies
-        run: |
-          pip install -r requirements.txt
-          pip install pytest pytest-cov
+    - name: Install system dependencies for PostgreSQL
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y libpq-dev gcc
 
-      - name: Run migrations
-        run: |
-          python manage.py migrate
+    - name: Install Python dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        pip install pytest-cov
 
-      - name: Run tests with coverage
-        run: |
-          pytest --cov=history --cov-report=xml --cov-report=term
+    - name: Create .env file for testing
+      run: |
+        cat > .env << EOF
+        DJANGO_SECRET_KEY=test-$(openssl rand -hex 32)
+        DJANGO_DEBUG=True
+        DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1
+        DJANGO_CSRF_TRUSTED_ORIGINS=http://localhost
+        DB_NAME=history_test
+        DB_USER=postgres
+        DB_PASSWORD=postgres
+        DB_HOST=localhost
+        DB_PORT=5432
+        CELERY_BROKER_URL=redis://localhost:6379/0
+        CELERY_RESULT_BACKEND=redis://localhost:6379/0
+        EOF
+        
+        echo "✅ Created .env file:"
+        cat .env | grep -v "PASSWORD"
+    
+    - name: Run migrations
+      run: |
+        python manage.py migrate
+
+    - name: Run tests with coverage
+      run: |
+        pytest --cov=. --cov-report=xml --cov-report=html --cov-report=term
+
+    - name: Upload coverage report
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: htmlcov/
