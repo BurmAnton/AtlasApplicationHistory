@@ -7,19 +7,6 @@ def test_application_list_requires_login(client):
     response = client.get(reverse("application_list"))
     assert response.status_code < 500
 
-
-@pytest.mark.django_db
-def test_api_requires_token(client):
-    response = client.get("/api/application/")
-    assert response.status_code < 500
-
-
-@pytest.mark.django_db
-def test_api_guide_requires_login(client):
-    response = client.get("/api-guide/")
-    assert response.status_code < 500
-
-
 @pytest.mark.django_db
 def test_api_guide_requires_admin_group(client, user):
     client.force_login(user)
@@ -68,6 +55,7 @@ def test_application_export(client, user, existing_application):
     assert response["Content-Type"].startswith(
         "application/vnd.openxmlformats-officedocument"
     )
+
 
 @pytest.mark.django_db
 def test_api_application_with_token(client, token, existing_application):

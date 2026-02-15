@@ -1,6 +1,7 @@
 import pandas as pd
 import pytest
 from unittest.mock import patch
+
 from django.contrib.auth.models import User
 from rest_framework.authtoken.models import Token
 from history.models import Application, ImportHistory, ExportSchedule, StatusHistory
@@ -107,3 +108,35 @@ def existing_status_history(existing_application):
         rr_status="created",
         snapshot_dt=datetime.now()
     )
+
+@pytest.fixture
+def scraper_config():
+    return {
+        "modal": {
+            "list_container_selector": ".container",
+            "item_selector": ".item",
+            "item_text_selector": ".text",
+            "download_button_selector": ".btn",
+        },
+        "browser": {"explicit_wait": 1},
+    }
+
+@pytest.fixture
+def html_body():
+    return """
+    <html>
+      <body>
+        <p class="export-item__text">
+          09.12.2025, 14:28 - Экспорт заявок
+        </p>
+      </body>
+    </html>
+    """
+
+@pytest.fixture
+def json_body():
+    return {
+        "applications": [
+            {"rr_id": "RR-001", "program": "Python"}
+        ]
+    }
