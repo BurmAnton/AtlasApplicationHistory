@@ -71,7 +71,7 @@ jobs:
         CELERY_RESULT_BACKEND=redis://localhost:6379/0
         EOF
         
-        echo "✅ Created .env file:"
+        echo "Created .env file:"
         cat .env | grep -v "PASSWORD"
     
     - name: Run migrations
