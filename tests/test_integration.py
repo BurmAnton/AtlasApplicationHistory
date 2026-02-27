@@ -65,7 +65,10 @@ def test_api_application_with_token(client, token, existing_application):
     )
 
     assert response.status_code == 200
-    assert isinstance(response.json(), list)
+    
+    data = response.json()
+    assert "results" in data
+    assert isinstance(data["results"], list)
 
 @pytest.mark.django_db
 def test_api_application_filter(client, token):
@@ -78,8 +81,8 @@ def test_api_application_filter(client, token):
     )
 
     data = response.json()
-    assert len(data) == 1
-    assert data[0]["rr_id"] == "RR-1"
+    assert data["count"] == 1
+    assert data["results"][0]["program_name"] == "Python"
 
 @pytest.mark.django_db
 def test_api_history_status(client, token, existing_application, existing_status_history):
@@ -89,7 +92,10 @@ def test_api_history_status(client, token, existing_application, existing_status
     )
 
     assert response.status_code == 200
-    assert isinstance(response.json(), list)
+    
+    data = response.json()
+    assert "results" in data
+    assert isinstance(data["results"], list)
 
 @pytest.mark.django_db
 def test_api_invalid_token(client):
